@@ -1,5 +1,20 @@
 use k8s_openapi::api::core::v1::ContainerStatus as KubeStatus;
 
+/// This allows us to store the variable-sized Status. The user would probably replace this type when implementing custome states.
+pub enum StatusWrapper {
+    Registered(Status<Registered>),
+    ImagePull(Status<ImagePull>),
+    ImagePullError(Status<ImagePullError>),
+    ImagePullBackoff(Status<ImagePullBackoff>),
+    Volume(Status<Volume>),
+    VolumeError(Status<VolumeError>),
+    Starting(Status<Starting>),
+    Running(Status<Running>),
+    Error(Status<Error>),
+    CrashLoopBackoff(Status<CrashLoopBackoff>),
+    Completed(Status<Completed>),
+}
+
 /// Marks valid container states in our graph, not necessarily in Kubernetes spec.
 pub trait State {}
 
@@ -48,7 +63,7 @@ impl State for Error {}
 pub struct CrashLoopBackoff;
 impl State for CrashLoopBackoff {}
 
-/// The container failed several times.
+/// The container finished without error.
 pub struct Completed;
 impl State for Completed {}
 

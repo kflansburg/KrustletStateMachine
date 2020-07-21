@@ -1,5 +1,14 @@
 use k8s_openapi::api::core::v1::PodStatus as KubeStatus;
 
+pub enum StatusWrapper {
+    Registered(Status<Registered>),
+    Pending(Status<Pending>),
+    Running(Status<Running>),
+    Error(Status<Error>),
+    CrashLoopBackoff(Status<CrashLoopBackoff>),
+    Completed(Status<Completed>),
+}
+
 /// Marks valid pod states in our graph, not necessarily in Kubernetes spec.
 pub trait State {}
 
