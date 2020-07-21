@@ -1,11 +1,11 @@
 use k8s_openapi::api::core::v1::ContainerStatus as KubeStatus;
 
-/// Marks valid container states in our graph, not necessarily in Kubernetes spec. 
+/// Marks valid container states in our graph, not necessarily in Kubernetes spec.
 trait State {}
 
 struct Status<S: State> {
     state: S,
-    inner: KubeStatus
+    inner: KubeStatus,
 }
 
 /// The Kubelet is aware of the container.
@@ -16,11 +16,11 @@ impl State for Registered {}
 struct ImagePull;
 impl State for ImagePull {}
 
-/// The image pull failed. 
+/// The image pull failed.
 struct ImagePullError;
 impl State for ImagePullError {}
 
-/// The image pull failed several times. 
+/// The image pull failed several times.
 struct ImagePullBackoff;
 impl State for ImagePullBackoff {}
 
@@ -52,111 +52,108 @@ impl State for CrashLoopBackoff {}
 struct Completed;
 impl State for Completed {}
 
-/// 
+///
 /// Implement outgoing edges for each state.
-/// 
+///
 
 impl Status<Registered> {
-    /// Clippy doesnt like these to_ names. 
-    fn to_image_pull(self) -> Status<ImagePull> {
+    fn into_image_pull(self) -> Status<ImagePull> {
         Status {
             state: ImagePull,
-            inner: self.inner
+            inner: self.inner,
         }
     }
 }
 
 impl Status<ImagePull> {
-    fn to_image_pull_error(self) -> Status<ImagePullError> {
+    fn into_image_pull_error(self) -> Status<ImagePullError> {
         Status {
             state: ImagePullError,
-            inner: self.inner
+            inner: self.inner,
         }
     }
-    fn to_volume(self) -> Status<Volume> {
+    fn into_volume(self) -> Status<Volume> {
         Status {
             state: Volume,
-            inner: self.inner
+            inner: self.inner,
         }
     }
 }
 
 impl Status<ImagePullError> {
-    fn to_image_pull(self) -> Status<ImagePull> {
+    fn into_image_pull(self) -> Status<ImagePull> {
         Status {
             state: ImagePull,
-            inner: self.inner
+            inner: self.inner,
         }
     }
-    fn to_image_pull_backoff(self) -> Status<ImagePullBackoff> {
+    fn into_image_pull_backoff(self) -> Status<ImagePullBackoff> {
         Status {
             state: ImagePullBackoff,
-            inner: self.inner
+            inner: self.inner,
         }
     }
 }
 
 impl Status<ImagePullBackoff> {
-    fn to_image_pull(self) -> Status<ImagePull> {
+    fn into_image_pull(self) -> Status<ImagePull> {
         Status {
             state: ImagePull,
-            inner: self.inner
+            inner: self.inner,
         }
     }
 }
 
-
 impl Status<Volume> {
-    fn to_volume_error(self) -> Status<VolumeError> {
+    fn into_volume_error(self) -> Status<VolumeError> {
         Status {
             state: VolumeError,
-            inner: self.inner
+            inner: self.inner,
         }
     }
-    fn to_starting(self) -> Status<Starting> {
+    fn into_starting(self) -> Status<Starting> {
         Status {
             state: Starting,
-            inner: self.inner
+            inner: self.inner,
         }
     }
 }
 
 impl Status<Running> {
-    fn to_error(self) -> Status<Error> {
+    fn into_error(self) -> Status<Error> {
         Status {
             state: Error,
-            inner: self.inner
+            inner: self.inner,
         }
     }
-    fn to_completed(self) -> Status<Completed> {
+    fn into_completed(self) -> Status<Completed> {
         Status {
             state: Completed,
-            inner: self.inner
+            inner: self.inner,
         }
     }
 }
 
-
 impl Status<Error> {
-    fn to_starting(self) -> Status<Starting> {
+    fn into_starting(self) -> Status<Starting> {
         Status {
             state: Starting,
-            inner: self.inner
+            inner: self.inner,
         }
     }
-    fn to_crash_loop_backoff(self) -> Status<CrashLoopBackoff> {
+    fn into_crash_loop_backoff(self) -> Status<CrashLoopBackoff> {
         Status {
             state: CrashLoopBackoff,
-            inner: self.inner
+            inner: self.inner,
         }
     }
 }
 
 impl Status<CrashLoopBackoff> {
-    fn to_starting(self) -> Status<Starting> {
+    fn into_starting(self) -> Status<Starting> {
         Status {
             state: Starting,
-            inner: self.inner
+            inner: self.inner,
         }
     }
 }
