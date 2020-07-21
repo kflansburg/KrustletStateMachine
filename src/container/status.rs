@@ -60,7 +60,7 @@ impl From<Status<Registered>> for Status<ImagePull> {
     fn from(status: Status<Registered>) -> Status<ImagePull> {
         Status {
             state: ImagePull,
-            inner: status.inner
+            inner: status.inner,
         }
     }
 }
@@ -69,7 +69,7 @@ impl From<Status<ImagePull>> for Status<ImagePullError> {
     fn from(status: Status<ImagePull>) -> Status<ImagePullError> {
         Status {
             state: ImagePullError,
-            inner: status.inner
+            inner: status.inner,
         }
     }
 }
@@ -78,7 +78,7 @@ impl From<Status<ImagePull>> for Status<Volume> {
     fn from(status: Status<ImagePull>) -> Status<Volume> {
         Status {
             state: Volume,
-            inner: status.inner
+            inner: status.inner,
         }
     }
 }
@@ -87,7 +87,7 @@ impl From<Status<ImagePullError>> for Status<ImagePull> {
     fn from(status: Status<ImagePullError>) -> Status<ImagePull> {
         Status {
             state: ImagePull,
-            inner: status.inner
+            inner: status.inner,
         }
     }
 }
@@ -96,7 +96,7 @@ impl From<Status<ImagePullError>> for Status<ImagePullBackoff> {
     fn from(status: Status<ImagePullError>) -> Status<ImagePullBackoff> {
         Status {
             state: ImagePullBackoff,
-            inner: status.inner
+            inner: status.inner,
         }
     }
 }
@@ -105,7 +105,7 @@ impl From<Status<ImagePullBackoff>> for Status<ImagePull> {
     fn from(status: Status<ImagePullBackoff>) -> Status<ImagePull> {
         Status {
             state: ImagePull,
-            inner: status.inner
+            inner: status.inner,
         }
     }
 }
@@ -114,7 +114,7 @@ impl From<Status<Volume>> for Status<VolumeError> {
     fn from(status: Status<Volume>) -> Status<VolumeError> {
         Status {
             state: VolumeError,
-            inner: status.inner
+            inner: status.inner,
         }
     }
 }
@@ -123,7 +123,7 @@ impl From<Status<Volume>> for Status<Starting> {
     fn from(status: Status<Volume>) -> Status<Starting> {
         Status {
             state: Starting,
-            inner: status.inner
+            inner: status.inner,
         }
     }
 }
@@ -132,7 +132,7 @@ impl From<Status<Running>> for Status<Error> {
     fn from(status: Status<Running>) -> Status<Error> {
         Status {
             state: Error,
-            inner: status.inner
+            inner: status.inner,
         }
     }
 }
@@ -141,7 +141,7 @@ impl From<Status<Running>> for Status<Completed> {
     fn from(status: Status<Running>) -> Status<Completed> {
         Status {
             state: Completed,
-            inner: status.inner
+            inner: status.inner,
         }
     }
 }
@@ -150,7 +150,7 @@ impl From<Status<Error>> for Status<Starting> {
     fn from(status: Status<Error>) -> Status<Starting> {
         Status {
             state: Starting,
-            inner: status.inner
+            inner: status.inner,
         }
     }
 }
@@ -159,7 +159,7 @@ impl From<Status<Error>> for Status<CrashLoopBackoff> {
     fn from(status: Status<Error>) -> Status<CrashLoopBackoff> {
         Status {
             state: CrashLoopBackoff,
-            inner: status.inner
+            inner: status.inner,
         }
     }
 }
@@ -168,7 +168,7 @@ impl From<Status<CrashLoopBackoff>> for Status<Starting> {
     fn from(status: Status<CrashLoopBackoff>) -> Status<Starting> {
         Status {
             state: Starting,
-            inner: status.inner
+            inner: status.inner,
         }
     }
 }

@@ -36,7 +36,7 @@ impl From<Status<Registered>> for Status<Pending> {
     fn from(status: Status<Registered>) -> Status<Pending> {
         Status {
             state: Pending,
-            inner: status.inner
+            inner: status.inner,
         }
     }
 }
@@ -45,7 +45,7 @@ impl From<Status<Pending>> for Status<Running> {
     fn from(status: Status<Pending>) -> Status<Running> {
         Status {
             state: Running,
-            inner: status.inner
+            inner: status.inner,
         }
     }
 }
@@ -54,7 +54,7 @@ impl From<Status<Pending>> for Status<Error> {
     fn from(status: Status<Pending>) -> Status<Error> {
         Status {
             state: Error,
-            inner: status.inner
+            inner: status.inner,
         }
     }
 }
@@ -63,7 +63,7 @@ impl From<Status<Running>> for Status<Completed> {
     fn from(status: Status<Running>) -> Status<Completed> {
         Status {
             state: Completed,
-            inner: status.inner
+            inner: status.inner,
         }
     }
 }
@@ -72,7 +72,7 @@ impl From<Status<Running>> for Status<Error> {
     fn from(status: Status<Running>) -> Status<Error> {
         Status {
             state: Error,
-            inner: status.inner
+            inner: status.inner,
         }
     }
 }
@@ -81,7 +81,7 @@ impl From<Status<CrashLoopBackoff>> for Status<Error> {
     fn from(status: Status<CrashLoopBackoff>) -> Status<Error> {
         Status {
             state: Error,
-            inner: status.inner
+            inner: status.inner,
         }
     }
 }
@@ -90,7 +90,7 @@ impl From<Status<Error>> for Status<Pending> {
     fn from(status: Status<Error>) -> Status<Pending> {
         Status {
             state: Pending,
-            inner: status.inner
+            inner: status.inner,
         }
     }
 }
@@ -99,7 +99,7 @@ impl From<Status<Error>> for Status<CrashLoopBackoff> {
     fn from(status: Status<Error>) -> Status<CrashLoopBackoff> {
         Status {
             state: CrashLoopBackoff,
-            inner: status.inner
+            inner: status.inner,
         }
     }
 }
