@@ -1,5 +1,12 @@
 use k8s_openapi::api::core::v1::PodStatus as KubeStatus;
 
+pub trait Wrapper {
+    fn new(inner: KubeStatus) -> Self;
+
+    /// Transitions that must be supported outside of provider need to be implemented to satisfy trait.
+    fn to_error(self, msg: &str) -> Self;
+}
+
 pub enum StatusWrapper {
     Registered(Status<Registered>),
     Pending(Status<Pending>),
@@ -7,6 +14,23 @@ pub enum StatusWrapper {
     Error(Status<Error>),
     CrashLoopBackoff(Status<CrashLoopBackoff>),
     Completed(Status<Completed>),
+}
+
+impl Wrapper for StatusWrapper {
+    fn new(inner: KubeStatus) -> Self {
+        StatusWrapper::Registered(Status { inner, state: Registered })
+    }
+
+    fn to_error(self, msg: &str) -> Self {
+        match self {
+            StatusWrapper::Registered(mut status) => {
+                status.inner.phase = Some("Failed".to_string());
+                status.inner.message = Some(msg.to_string());
+                StatusWrapper::Error(status.into())
+            },
+            _ => unimplemented!()
+        }
+    }
 }
 
 /// Marks valid pod states in our graph, not necessarily in Kubernetes spec.
@@ -49,6 +73,16 @@ impl From<Status<Registered>> for Status<Pending> {
         }
     }
 }
+
+impl From<Status<Registered>> for Status<Error> {
+    fn from(status: Status<Registered>) -> Status<Error> {
+        Status {
+            state: Error,
+            inner: status.inner,
+        }
+    }
+}
+
 
 impl From<Status<Pending>> for Status<Running> {
     fn from(status: Status<Pending>) -> Status<Running> {

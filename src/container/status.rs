@@ -1,4 +1,9 @@
 use k8s_openapi::api::core::v1::ContainerStatus as KubeStatus;
+use k8s_openapi::api::core::v1::Container as KubeContainer;
+
+pub trait Wrapper {
+    fn new(container: &KubeContainer) -> Self;
+}
 
 /// This allows us to store the variable-sized Status. The user would probably replace this type when implementing custome states.
 pub enum StatusWrapper {
@@ -13,6 +18,14 @@ pub enum StatusWrapper {
     Error(Status<Error>),
     CrashLoopBackoff(Status<CrashLoopBackoff>),
     Completed(Status<Completed>),
+}
+
+impl Wrapper for StatusWrapper {
+    fn new(container: &KubeContainer) -> Self {
+        // Not sure of the best way to populate this.
+        let inner = Default::default();
+        StatusWrapper::Registered(Status { inner, state: Registered })
+    } 
 }
 
 /// Marks valid container states in our graph, not necessarily in Kubernetes spec.
