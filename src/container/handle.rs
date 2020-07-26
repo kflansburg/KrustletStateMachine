@@ -1,16 +1,14 @@
-use crate::container::status::StatusWrapper;
 use k8s_openapi::api::core::v1::Container as KubeContainer;
-use crate::container::status::Wrapper as ContainerStatusWrapper;
+use crate::container::status::StatusWrapper;
 
-pub struct Handle<C> {
+pub struct Handle {
     container: KubeContainer,
-    status: C,
+    status: StatusWrapper,
 }
 
-impl <C> Handle<C> {
-    pub fn new(container: KubeContainer) -> Self 
-        where C: ContainerStatusWrapper {
-        let status = C::new(&container);
+impl Handle {
+    pub fn new(container: KubeContainer) -> Self {
+        let status = StatusWrapper::new(&container);
         Handle { container, status }
     }
 }

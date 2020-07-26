@@ -9,10 +9,10 @@ mod tests {
     use k8s_openapi::api::core::v1::PodStatus as KubePodStatus;
     use k8s_openapi::api::core::v1::PodSpec as KubePodSpec;
     use k8s_openapi::api::core::v1::Container as KubeContainer;
-    use crate::pod::status::Wrapper;
     use super::*;
+    use super::pod::status::StatusWrapper as PodStatusWrapper;
 
-    fn setup() -> pod::Manager<pod::status::StatusWrapper, container::status::StatusWrapper> {
+    fn setup() -> pod::Manager {
         let mut manager = pod::Manager::new();
 
         let mut metadata: ObjectMeta = Default::default();
@@ -38,9 +38,27 @@ mod tests {
         // Consumes errors from channel and marks pods as in error state.
         let mut manager = setup();
 
+        // This is kind of verbose but it forces us to deal with impossible state transitions in
+        // the context of when they occur. 
         manager.update_status("default", "test", |pod_status| {
-            pod_status.to_error("Foo error message")
-        });
+            match pod_status {
+                PodStatusWrapper::Pending(status) => {
+                    PodStatusWrapper::Failed(status.into())
+                },
+                PodStatusWrapper::Running(status) => {
+                    PodStatusWrapper::Failed(status.into())
+                },
+                PodStatusWrapper::Succeeded(status) => {
+                    // We have to explicitly handle impossible state transitions. 
+                    panic!()
+                },
+                // Do we want some methods to overwrite metadata like "message" or "reason"
+                // even when no state transition happens. 
+                PodStatusWrapper::Failed(status) => {
+                    PodStatusWrapper::Failed(status)
+                }
+            }
+        }).await;
     }
 
     #[tokio::test]
