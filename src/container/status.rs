@@ -1,5 +1,5 @@
-use k8s_openapi::api::core::v1::ContainerStatus as KubeStatus;
 use k8s_openapi::api::core::v1::Container as KubeContainer;
+use k8s_openapi::api::core::v1::ContainerStatus as KubeStatus;
 
 /// This allows us to store the variable-sized Status. The user would probably replace this type when implementing custome states.
 pub enum StatusWrapper {
@@ -13,7 +13,7 @@ impl StatusWrapper {
         let inner = Default::default();
         StatusWrapper::Waiting(Status {
             state: Waiting,
-            inner
+            inner,
         })
     }
 }
@@ -22,7 +22,6 @@ pub struct Status<S> {
     state: S,
     inner: KubeStatus,
 }
-
 
 /// The Kubelet is aware of the container.
 #[derive(Default)]
@@ -34,7 +33,7 @@ pub struct Running;
 
 /// The container has exited.
 #[derive(Default)]
-pub struct Terminated; 
+pub struct Terminated;
 
 //
 // Implement outgoing edges for each state.
@@ -46,13 +45,12 @@ macro_rules! edge {
             fn from(start: Status<$start>) -> Status<$end> {
                 Status {
                     inner: start.inner,
-                    state: <$end as Default>::default()
+                    state: <$end as Default>::default(),
                 }
             }
         }
-    }
+    };
 }
-
 
 edge!(Waiting, Running);
 edge!(Running, Terminated);

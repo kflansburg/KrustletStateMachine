@@ -9,7 +9,10 @@ pub enum StatusWrapper {
 
 impl StatusWrapper {
     pub fn new(inner: KubeStatus) -> Self {
-        StatusWrapper::Pending(Status { inner, state: Pending })
+        StatusWrapper::Pending(Status {
+            inner,
+            state: Pending,
+        })
     }
 }
 
@@ -41,11 +44,11 @@ macro_rules! edge {
             fn from(start: Status<$start>) -> Status<$end> {
                 Status {
                     inner: start.inner,
-                    state: <$end as Default>::default()
+                    state: <$end as Default>::default(),
                 }
             }
         }
-    }
+    };
 }
 
 edge!(Pending, Running);
