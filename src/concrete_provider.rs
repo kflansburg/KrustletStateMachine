@@ -1,4 +1,4 @@
-use crate::provider::Provider;
+use crate::concrete_state_machine::Provider;
 use async_trait::async_trait;
 use either::Either;
 

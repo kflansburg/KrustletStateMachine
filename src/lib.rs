@@ -1,7 +1,6 @@
 pub mod concrete_provider;
 pub mod concrete_state_machine;
 pub mod kubelet;
-pub mod provider;
 pub mod state;
 pub mod state_machine;
 
