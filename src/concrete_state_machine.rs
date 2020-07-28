@@ -31,7 +31,7 @@ impl<P: 'static + Provider> StateMachine<P> for StateMachineTest {
             loop {
                 {
                     // I'm thinking there may be a better way to do this that allows the provider
-                    // to server other pods while the image is pulling. (or especially in image
+                    // to serve other pods while the image is pulling. (or especially in image
                     // pull backoff)
                     let mut p = provider.lock().await;
                     match p.image_pull(container.image.clone().unwrap()).await {
@@ -87,9 +87,7 @@ impl<P: 'static + Provider> StateMachine<P> for StateMachineTest {
                         }
                     }
                     if failures > 3 {
-                        // TODO Not sure of the best way to update the state within loops like this.
-                        // Might have to use the wrapper again.
-                        // state: Status<ImagePullBackoff> = state.into();
+                        // state: Status<VolumePullBackoff> = state.into();
                         let mut p = provider.lock().await;
                         match p.volume_mount_backoff().await {
                             Ok(_) => (),
