@@ -9,5 +9,5 @@ pub trait StateMachine<P> {
     // We had discussed an iterative method like next(),
     // but futures already do this, so I think by implementing this method using
     // async function calls, you get that behavior.
-    async fn run_to_completion(provider: Arc<Mutex<P>>, pod: KubePod) -> Result<(), ()>;
+    async fn run_to_completion(provider: Arc<Mutex<P>>, pod: KubePod) -> anyhow::Result<()>;
 }

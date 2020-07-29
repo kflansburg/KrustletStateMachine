@@ -12,3 +12,4 @@ tokio  = { version = "0.2", features = ["macros", "rt-threaded", "sync", "time"]
 dashmap = "*"
 async-trait = "*"
 either = "*"
+anyhow = "*"

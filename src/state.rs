@@ -1,5 +1,6 @@
 use async_trait::async_trait;
 use k8s_openapi::api::core::v1::PodStatus as KubeStatus;
+use k8s_openapi::api::core::v1::Pod as KubePod;
 
 pub struct Status<S> {
     _state: S,
@@ -17,14 +18,14 @@ impl<T> StatusTrait for Status<T> {
     }
 }
 
-impl Default for Status<Registered> {
-    fn default() -> Self {
-        Status {
-            _state: Registered,
-            inner: Default::default(),
-        }
-    }
-}
+// impl Default for Status<Registered> {
+//     fn default() -> Self {
+//         Status {
+//             _state: Registered,
+//             inner: Default::default(),
+//         }
+//     }
+// }
 
 macro_rules! node {
     (
@@ -37,39 +38,6 @@ macro_rules! node {
     };
 }
 
-// Now that I think about it, these methods should probably be async so that
-// we can make the call to Kubernetes, as well as have arguments for additional
-// context such as error messages. This may require a trait for each transition.
-
-#[async_trait]
-pub trait ToError: StatusTrait {
-    async fn to_error(self, message: &str) -> Status<Error> {
-        let mut state = self.into_inner();
-
-        state.message = Some(message.to_string());
-        state.phase = Some("Failed".to_string());
-
-        // TODO notify Kubernetes.
-
-        Status {
-            inner: state,
-            _state: Error,
-        }
-    }
-}
-
-macro_rules! edge {
-    ($start:ty,$end:ty) => {
-        impl From<Status<$start>> for Status<$end> {
-            fn from(start: Status<$start>) -> Status<$end> {
-                Status {
-                    inner: start.inner,
-                    _state: <$end as Default>::default(),
-                }
-            }
-        }
-    };
-}
 
 node!(
     /// The Kubelet is aware of the Pod.
@@ -121,28 +89,28 @@ node!(
     Completed
 );
 
-impl ToError for Status<VolumeMount> {}
-impl ToError for Status<ImagePull> {}
+// I think one problem with this is that users dont have a nice trait to list the methods they 
+// need to implement. They have to redefine all the graph edges. Is there a way for us to provide
+// default implementations? 
 
-// So the will probably be replaced with traits like above.
-edge!(Registered, ImagePull);
+pub enum Transition<S,E> {
+    Advance(S),
+    Error(E)
+}
 
-edge!(ImagePull, ImagePullBackoff);
-edge!(ImagePull, VolumeMount);
 
-edge!(ImagePullBackoff, ImagePull);
+#[async_trait]
+pub trait State<S, E> {
+    async fn next(&self, pod: KubePod) -> anyhow::Result<Transition<S, E>>;
+}
 
-edge!(VolumeMount, VolumeMountBackoff);
-edge!(VolumeMount, Starting);
-
-edge!(VolumeMountBackoff, VolumeMount);
-
-edge!(Starting, Running);
-
-edge!(Running, Error);
-edge!(Running, Completed);
-
-edge!(Error, CrashLoopBackoff);
-edge!(Error, Starting);
-
-edge!(CrashLoopBackoff, Starting);
+macro_rules! state {
+    ($name:ty, $success:ty, $error:ty, $work:block) => {
+        #[async_trait]
+        impl State<$success, $error> for $name {
+            async fn next(&self, pod: KubePod) -> anyhow::Result<Transition<$success, $error>> {
+                $work
+            }
+        }
+    };
+}
