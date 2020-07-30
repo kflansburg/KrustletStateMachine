@@ -14,7 +14,7 @@ pub struct Config;
 pub enum Transition<S, E> {
     Advance(S),
     Error(E),
-    Completed(anyhow::Result<()>)
+    Completed(anyhow::Result<()>),
 }
 
 #[async_trait]
@@ -30,7 +30,7 @@ pub async fn run(state: impl State, pod: KubePod) -> anyhow::Result<()> {
     match state.next(pod.clone()).await? {
         Transition::Advance(s) => run(s, pod).await,
         Transition::Error(s) => run(s, pod).await,
-        Transition::Completed(result) => result
+        Transition::Completed(result) => result,
     }
 }
 
@@ -46,7 +46,7 @@ macro_rules! state {
         #[derive(Default, Debug)]
         pub struct $name;
 
-       
+
         #[async_trait]
         impl State for $name {
             type Success = $success;
@@ -80,7 +80,6 @@ macro_rules! state {
     };
 }
 
-
 state!(Registered, ImagePull, Failed, {
     println!("{:?} -> {:?}", self, ImagePull);
     Ok(Transition::Advance(ImagePull))
@@ -99,7 +98,6 @@ state!(ImagePullBackoff, ImagePull, ImagePullBackoff, {
 async fn failed(self_ref: Failed, _pod: KubePod) -> anyhow::Result<Transition<Failed, Failed>> {
     println!("{:?}", self_ref);
     Ok(Transition::Completed(Err(anyhow::anyhow!("Failed."))))
-    
 }
 
 state!(Failed, Failed, Failed, failed);
@@ -119,8 +117,6 @@ state!(Completed, Completed, Completed, {
     Ok(Transition::Completed(Ok(())))
 });
 
-
-
 mod test {
     use super::*;
 
@@ -129,6 +125,6 @@ mod test {
         let pod = Default::default();
         let state = Registered;
         let result = run(state, pod).await;
-        println!("{:?}", result); 
+        println!("{:?}", result);
     }
 }

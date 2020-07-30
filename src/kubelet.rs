@@ -1,8 +1,8 @@
+use crate::state::{run, State};
 use k8s_openapi::api::core::v1::Pod as KubePod;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use crate::state::{run, State};
 
 // Really basic Kubelet for driving provider.
 pub struct Kubelet<F, S> {
