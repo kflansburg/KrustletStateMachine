@@ -1,8 +1,8 @@
-use crate::state::{State, Status, Work};
 use k8s_openapi::api::core::v1::Pod as KubePod;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
+use crate::state::{run, State};
 
 // Really basic Kubelet for driving provider.
 pub struct Kubelet<F, S> {
@@ -23,15 +23,15 @@ impl<F, S> Kubelet<F, S> {
         }
     }
 
-    pub async fn run<T: Work>(&self) -> anyhow::Result<()>
+    pub async fn run(&self) -> anyhow::Result<()>
     where
-        F: FnMut() -> Status<T>,
-        S: 'static + std::marker::Send,
+        F: Fn() -> S,
+        S: State,
     {
         // let mut pod_map = HashMap::new();
         while let Ok(Some(pod)) = next_pod().await {
-            // let state = (self.state_factory)();
-            // Not sure what to do here.
+            let state = (self.state_factory)();
+            let result = run(state, pod).await;
         }
         Ok(())
     }

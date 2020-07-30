@@ -3,65 +3,55 @@ use k8s_openapi::api::core::v1::Pod as KubePod;
 use k8s_openapi::api::core::v1::PodStatus as KubeStatus;
 
 #[derive(Debug)]
-pub struct Status<S: Work> {
+pub struct Status<S: State> {
     state: S,
     inner: KubeStatus,
 }
 
-// TODO: A nice top level API like this
-// graph!(
-//     ImagePull => {Ok(())},
-//     Volumes => another_func,
-//     // etc...
-// );
-
 // Placeholder config stub
 pub struct Config;
 
-#[async_trait]
-pub trait Work {
-    // TODO: not sure if we actually need a generic config type, but putting it here in case
-    fn new<C>(config: C) -> Self;
-    async fn work(&self, pod: KubePod) -> anyhow::Result<()>;
+pub enum Transition<S, E> {
+    Advance(S),
+    Error(E),
+    Completed(anyhow::Result<()>)
 }
 
-// Required to implement edge traits.
-// pub trait StatusTrait: std::marker::Sized {
-//     fn into_inner(self) -> KubeStatus;
-// }
+#[async_trait]
+pub trait State: Sync + Send + 'static {
+    type Success: State;
+    type Error: State;
 
-// impl<T> StatusTrait for Status<T> {
-//     fn into_inner(self) -> KubeStatus {
-//         self.inner
-//     }
-// }
+    async fn next(self, pod: KubePod) -> anyhow::Result<Transition<Self::Success, Self::Error>>;
+}
 
-// impl Default for Status<Registered> {
-//     fn default() -> Self {
-//         Status {
-//             _state: Registered,
-//             inner: Default::default(),
-//         }
-//     }
-// }
+#[async_recursion::async_recursion]
+pub async fn run(state: impl State, pod: KubePod) -> anyhow::Result<()> {
+    match state.next(pod.clone()).await? {
+        Transition::Advance(s) => run(s, pod).await,
+        Transition::Error(s) => run(s, pod).await,
+        Transition::Completed(result) => result
+    }
+}
 
-macro_rules! node {
+macro_rules! state {
     (
         $(#[$meta:meta])*
         $name:ident,
+        $success:ty,
+        $error: ty,
         $work:block
     ) => {
         $(#[$meta])*
         #[derive(Default, Debug)]
         pub struct $name;
 
+       
         #[async_trait]
-        impl Work for $name {
-            fn new<C>(_config: C) -> Self {
-                $name
-            }
-
-            async fn work(&self, #[allow(unused_variables)] pod: KubePod) -> anyhow::Result<()> {
+        impl State for $name {
+            type Success = $success;
+            type Error = $error;
+           async fn next(self, #[allow(unused_variables)] pod: KubePod) -> anyhow::Result<Transition<Self::Success, Self::Error>> {
                 #[allow(unused_braces)]
                 $work
             }
@@ -71,6 +61,8 @@ macro_rules! node {
     (
         $(#[$meta:meta])*
         $name:ident,
+        $success:ty,
+        $error: ty,
         $work:path
     ) => {
         $(#[$meta])*
@@ -78,175 +70,65 @@ macro_rules! node {
         pub struct $name;
 
         #[async_trait]
-        impl Work for $name {
-            fn new<C>(_config: C) -> Self {
-                $name
-            }
-
-            async fn work(&self, #[allow(unused_variables)] pod: KubePod) -> anyhow::Result<()> {
+        impl State for $name {
+            type Success = $success;
+            type Error = $error;
+           async fn next(self, #[allow(unused_variables)] pod: KubePod) -> anyhow::Result<Transition<Self::Success, Self::Error>> {
                 $work(self, pod).await
             }
         }
     };
 }
 
-node!(
-    /// The Kubelet is aware of the Pod.
-    Registered,
-    { Ok(()) }
-);
 
-node!(
-    /// A container image is being pulled.
-    ImagePull,
-    { Ok(()) }
-);
+state!(Registered, ImagePull, Failed, {
+    println!("{:?} -> {:?}", self, ImagePull);
+    Ok(Transition::Advance(ImagePull))
+});
 
-node!(
-    /// A container image has failed several times.
-    ImagePullBackoff,
-    pull_backoff
-);
+state!(ImagePull, Starting, ImagePullBackoff, {
+    println!("{:?} -> {:?}", self, Starting);
+    Ok(Transition::Advance(Starting))
+});
 
-node!(
-    /// A container volume is being provisioned.
-    VolumeMount,
-    { Ok(()) }
-);
+state!(ImagePullBackoff, ImagePull, ImagePullBackoff, {
+    println!("{:?} -> {:?}", self, ImagePull);
+    Ok(Transition::Advance(ImagePull))
+});
 
-node!(
-    /// A container volume has failed several times.
-    VolumeMountBackoff,
-    { Ok(()) }
-);
-
-node!(
-    /// The Pod is starting.
-    Starting,
-    { Ok(()) }
-);
-
-node!(
-    /// The Pod is running.
-    Running,
-    { Ok(()) }
-);
-
-node!(
-    /// Pod execution failed.
-    RunError,
-    { Ok(()) }
-);
-
-node!(
-    /// The Pod has failed several times.
-    CrashLoopBackoff,
-    { Ok(()) }
-);
-
-node!(
-    /// The Pod exited without error.
-    Completed,
-    { Ok(()) }
-);
-
-// I think one problem with this is that users dont have a nice trait to list the methods they
-// need to implement. They have to redefine all the graph edges. Is there a way for us to provide
-// default implementations?
-
-pub enum Transition<S, E> {
-    Advance(S),
-    Error(E),
+async fn failed(self_ref: Failed, _pod: KubePod) -> anyhow::Result<Transition<Failed, Failed>> {
+    println!("{:?}", self_ref);
+    Ok(Transition::Completed(Err(anyhow::anyhow!("Failed."))))
+    
 }
 
-// #[async_trait]
-// pub trait State<S, E>
-// where
-//     S: State<S, E>,
-//     E: State<S, E>,
-// {
-//     async fn next(&self, pod: KubePod) -> anyhow::Result<Transition<S, E>>;
-// }
+state!(Failed, Failed, Failed, failed);
 
-#[async_trait]
-pub trait State {
-    type Success: Work + Send + Sync;
-    type Error: Work + Send + Sync;
+state!(Starting, Running, Failed, {
+    println!("{:?} -> {:?}", self, Running);
+    Ok(Transition::Advance(Running))
+});
 
-    async fn next(
-        self,
-        pod: KubePod,
-    ) -> anyhow::Result<Transition<Status<Self::Success>, Status<Self::Error>>>
-    where
-        Status<Self::Success>: State,
-        Status<Self::Error>: State;
-}
+state!(Running, Completed, Failed, {
+    println!("{:?} -> {:?}", self, Completed);
+    Ok(Transition::Advance(Completed))
+});
 
-use Transition::Advance;
-use Transition::Error;
+state!(Completed, Completed, Completed, {
+    println!("{:?}", self);
+    Ok(Transition::Completed(Ok(())))
+});
 
-macro_rules! state {
-    ($name:ty, $success:ty, $error:ty) => {
-        #[async_trait]
-        impl State for Status<$name> {
-            type Success = $success;
-            type Error = $error;
-            async fn next(
-                self,
-                pod: KubePod,
-            ) -> anyhow::Result<Transition<Status<Self::Success>, Status<Self::Error>>> {
-                Ok(match self.state.work(pod).await {
-                    Ok(_) => Advance(Status {
-                        state: <$success>::new(Config),
-                        inner: self.inner,
-                    }),
-                    Err(_) => Error(Status {
-                        state: <$error>::new(Config),
-                        inner: self.inner,
-                    }),
-                })
-            }
-        }
-    };
-}
 
-state!(Registered, ImagePull, ImagePull);
-state!(ImagePull, VolumeMount, ImagePullBackoff);
-state!(ImagePullBackoff, ImagePull, ImagePullBackoff);
 
-async fn pull_backoff(_self_ref: &ImagePullBackoff, _pod: KubePod) -> anyhow::Result<()> {
-    Ok(())
-}
+mod test {
+    use super::*;
 
-async fn walk<S: Work>(state: Status<S>, pod: KubePod) -> anyhow::Result<()>
-where
-    Status<S>: State,
-{
-    match state.next(pod.clone()).await.unwrap() {
-        Advance(s) => walk(s, pod).await,
-        Error(s) => walk(s, pod).await,
+    #[tokio::test]
+    async fn run_next() {
+        let pod = Default::default();
+        let state = Registered;
+        let result = run(state, pod).await;
+        println!("{:?}", result); 
     }
 }
-
-// mod test {
-//     use super::*;
-
-//     #[tokio::test]
-//     async fn run_next() {
-//         let work = Registered::new(Config);
-//         let state = Status {
-//             state: work,
-//             inner: KubeStatus::default(),
-//         };
-//         let pod = KubePod::default();
-//         let state: Box<dyn State> = match state.next(pod.clone()).await.unwrap() {
-//             Advance(s) => Box::new(s as State),
-//             Error(s) => Box::new(s as State),
-//         };
-//         println!("{:?}", state);
-//         let state = match state.next(pod.clone()).await.unwrap() {
-//             Advance(s) | Error(s) => s,
-//         };
-//         println!("{:?}", state);
-//     }
-// }
